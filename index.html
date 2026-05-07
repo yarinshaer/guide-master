@@ -297,6 +297,8 @@ function App(){
   const [sessionXp,setSessionXp] = useState(0);
   const timerRef = useRef(null);
   const prevLevel = useRef(getLevel(xp).n);
+  const handleTimeoutRef = useRef(null);
+  const advanceRef = useRef(null);
 
   const startGame = useCallback(()=>{
     const answered = JSON.parse(localStorage.getItem('gm_answered')||'[]');
@@ -316,20 +318,21 @@ function App(){
     setTimer(sec);setTimerMax(sec);
     timerRef.current = setInterval(()=>{
       setTimer(p=>{
-        if(p<=1){clearInterval(timerRef.current);handleTimeout();return 0;}
+        if(p<=1){clearInterval(timerRef.current);handleTimeoutRef.current();return 0;}
         return p-1;
       });
     },1000);
   };
 
-  const handleTimeout = useCallback(()=>{
+  const handleTimeout = ()=>{
     if(locked) return;
     setLocked(true);
     clearInterval(timerRef.current);
     setPicked(-1);
     setStreak(0);
-    setTimeout(advance,1600);
-  },[locked]);
+    setTimeout(()=>advanceRef.current(),1600);
+  };
+  handleTimeoutRef.current = handleTimeout;
 
   const handlePick = (i)=>{
     if(locked) return;
@@ -383,6 +386,7 @@ function App(){
     setIdx(next);setPicked(null);setLocked(false);
     startTimer(qs[next].t);
   };
+  advanceRef.current = advance;
 
   useEffect(()=>()=>clearInterval(timerRef.current),[]);
 
