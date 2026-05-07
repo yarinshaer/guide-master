@@ -8,6 +8,8 @@
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="questions.js?v=4"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-database-compat.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&display=swap');
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -253,6 +255,79 @@
   .explanation .exp-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
   .explanation .exp-text{flex:1;}
 
+  /* ===== NAME MODAL ===== */
+  .name-card{
+    width:100%;max-width:400px;
+    background:rgba(10,14,35,0.95);border:2px solid #00ff88;
+    border-radius:20px;padding:40px 28px;text-align:center;
+    box-shadow:0 0 60px rgba(0,255,136,0.25);
+    animation:levelUpPop .4s cubic-bezier(.4,0,.2,1);
+  }
+  .name-input{
+    width:100%;padding:14px 16px;
+    background:rgba(0,255,136,0.06);
+    border:2px solid rgba(0,255,136,0.3);
+    border-radius:10px;color:#fff;font-size:18px;
+    font-family:'Heebo',sans-serif;text-align:center;
+    outline:none;margin:20px 0;transition:border-color .3s;
+  }
+  .name-input:focus{border-color:#00ff88;box-shadow:0 0 20px rgba(0,255,136,0.15);}
+  .name-input::placeholder{color:#556;}
+
+  /* ===== LEADERBOARD ===== */
+  .lb-card{
+    width:100%;max-width:600px;
+    background:rgba(10,14,35,0.9);
+    border:2px solid #ffb700;border-radius:16px;padding:28px;
+    box-shadow:0 0 50px rgba(255,183,0,0.15);
+    animation:cardIn .4s ease;
+  }
+  .lb-title{
+    font-size:28px;font-weight:900;text-align:center;
+    background:linear-gradient(135deg,#ffb700,#ff8c00);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    margin-bottom:6px;
+  }
+  .lb-sub{text-align:center;font-size:13px;color:#556;margin-bottom:24px;}
+  .lb-list{display:flex;flex-direction:column;gap:8px;margin-bottom:24px;max-height:400px;overflow-y:auto;}
+  .lb-row{
+    display:flex;align-items:center;gap:12px;
+    padding:12px 16px;border-radius:10px;
+    background:rgba(0,255,136,0.04);
+    border:1px solid rgba(0,255,136,0.15);
+    transition:all .2s;
+  }
+  .lb-row.me{background:rgba(0,255,136,0.1);border-color:rgba(0,255,136,0.4);box-shadow:0 0 15px rgba(0,255,136,0.1);}
+  .lb-row.top1{border-color:#ffb700;background:rgba(255,183,0,0.1);}
+  .lb-row.top2{border-color:#c0c0c0;background:rgba(192,192,192,0.06);}
+  .lb-row.top3{border-color:#cd7f32;background:rgba(205,127,50,0.06);}
+  .lb-rank{font-size:20px;font-weight:900;min-width:36px;text-align:center;color:#556;}
+  .lb-rank.gold{color:#ffb700;}
+  .lb-rank.silver{color:#c0c0c0;}
+  .lb-rank.bronze{color:#cd7f32;}
+  .lb-info{flex:1;}
+  .lb-name{font-size:16px;font-weight:700;color:#fff;}
+  .lb-level{font-size:12px;color:#00a8ff;}
+  .lb-stats{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:13px;}
+  .lb-xp{color:#00ff88;font-weight:700;}
+  .lb-streak{color:#ffb700;font-size:12px;}
+  .lb-empty{text-align:center;padding:40px 20px;color:#556;font-size:15px;}
+  .lb-loading{text-align:center;padding:40px;color:#00ff88;font-size:16px;}
+  .lb-btn{
+    width:100%;padding:14px;margin-top:12px;
+    background:rgba(255,183,0,0.1);
+    border:1.5px solid rgba(255,183,0,0.4);border-radius:10px;
+    font-size:15px;font-weight:700;color:#ffb700;cursor:pointer;
+    font-family:'Heebo',sans-serif;transition:all .2s;
+  }
+  .lb-btn:hover{background:rgba(255,183,0,0.2);transform:translateY(-2px);}
+  .edit-name-btn{
+    background:none;border:none;color:#556;font-size:12px;
+    cursor:pointer;font-family:'Heebo',sans-serif;
+    text-decoration:underline;margin-right:8px;
+  }
+  .edit-name-btn:hover{color:#00a8ff;}
+
   @media(max-width:480px){
     .q-text{font-size:17px;}
     .opt{font-size:14px;padding:12px 14px;}
@@ -288,6 +363,102 @@ const getLevelPct = xp => {const l=getLevel(xp);return Math.min(100,((xp-l.min)/
 
 function shuffle(arr){return [...arr].sort(()=>Math.random()-.5);}
 
+// ─── FIREBASE ─────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  // TODO: הוסף כאן את הגדרות Firebase שלך
+  // apiKey: "...",
+  // authDomain: "...",
+  // databaseURL: "...",
+  // projectId: "...",
+};
+
+let db = null;
+try {
+  if (FIREBASE_CONFIG.apiKey) {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.database();
+  }
+} catch(e) { console.warn('Firebase init error:', e); }
+
+function getPlayerId() {
+  let id = localStorage.getItem('gm_player_id');
+  if (!id) {
+    id = 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2,9);
+    localStorage.setItem('gm_player_id', id);
+  }
+  return id;
+}
+
+function syncPlayerToFirebase(name, xpVal, bestStreakVal) {
+  if (!db || !name) return;
+  const id = getPlayerId();
+  const lvl = getLevel(xpVal);
+  db.ref('players/' + id).set({
+    name: name, xp: xpVal, level: lvl.n,
+    levelTitle: lvl.title, levelEmoji: lvl.emoji,
+    bestStreak: bestStreakVal || 0, lastPlayed: Date.now()
+  });
+}
+
+function getLocalLeaderboard() {
+  const myName = localStorage.getItem('gm_player_name');
+  const myXp = +(localStorage.getItem('gm_xp'))||0;
+  const myBest = +(localStorage.getItem('gm_best'))||0;
+  const myLvl = getLevel(myXp);
+  const me = myName ? [{
+    id: getPlayerId(), name: myName, xp: myXp,
+    level: myLvl.n, levelTitle: myLvl.title, levelEmoji: myLvl.emoji,
+    bestStreak: myBest
+  }] : [];
+  const friends = JSON.parse(localStorage.getItem('gm_friends')||'[]');
+  const all = [...me, ...friends];
+  const seen = new Set();
+  const unique = all.filter(p=>{if(seen.has(p.id))return false;seen.add(p.id);return true;});
+  unique.sort((a,b)=>b.xp-a.xp);
+  return unique;
+}
+
+function fetchLeaderboard(callback) {
+  if (db) {
+    db.ref('players').once('value').then(snap => {
+      const data = [];
+      snap.forEach(child => { data.push({ id: child.key, ...child.val() }); });
+      data.sort((a, b) => b.xp - a.xp);
+      callback(data);
+    }).catch(() => callback(getLocalLeaderboard()));
+    return;
+  }
+  callback(getLocalLeaderboard());
+}
+
+function buildShareUrl(name, xpVal, bestStreakVal) {
+  const pd = encodeURIComponent(JSON.stringify({i:getPlayerId(),n:name,x:xpVal,b:bestStreakVal}));
+  return `https://yarinshaer.github.io/guide-master/?f=${pd}`;
+}
+
+// Parse friend data from shared URL
+let _friendAdded = null;
+(function parseFriendUrl(){
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fd = params.get('f');
+    if(fd){
+      const d = JSON.parse(decodeURIComponent(fd));
+      if(d.i && d.n && d.i !== getPlayerId()){
+        const lvl = getLevel(d.x||0);
+        const friend = {id:d.i, name:d.n, xp:d.x||0, bestStreak:d.b||0,
+          level:lvl.n, levelTitle:lvl.title, levelEmoji:lvl.emoji};
+        const friends = JSON.parse(localStorage.getItem('gm_friends')||'[]');
+        const idx = friends.findIndex(f=>f.id===friend.id);
+        if(idx>=0) friends[idx]=friend; else friends.push(friend);
+        localStorage.setItem('gm_friends', JSON.stringify(friends));
+        _friendAdded = d.n;
+      }
+      window.history.replaceState({},'',window.location.pathname);
+    }
+  }catch(e){}
+})();
+
 // ─── MAIN APP ──────────────────────────────────────────
 function App(){
   const [screen,setScreen] = useState('intro'); // intro | game | score
@@ -310,6 +481,10 @@ function App(){
   const prevLevel = useRef(getLevel(xp).n);
   const handleTimeoutRef = useRef(null);
   const advanceRef = useRef(null);
+  const [playerName, setPlayerName] = useState(()=>localStorage.getItem('gm_player_name')||'');
+  const [showNameModal, setShowNameModal] = useState(()=>!localStorage.getItem('gm_player_name'));
+  const [friendAdded, setFriendAdded] = useState(_friendAdded);
+  useEffect(()=>{if(friendAdded) setTimeout(()=>setFriendAdded(null),4000);},[friendAdded]);
 
   const startGame = useCallback(()=>{
     const answered = JSON.parse(localStorage.getItem('gm_answered')||'[]');
@@ -401,14 +576,42 @@ function App(){
 
   useEffect(()=>()=>clearInterval(timerRef.current),[]);
 
+  // Sync to Firebase when game ends
+  useEffect(()=>{
+    if(screen==='score' && playerName){
+      syncPlayerToFirebase(playerName, xp, bestStreak);
+    }
+  },[screen]);
+
+  const saveName = (name)=>{
+    const trimmed = name.trim();
+    if(!trimmed) return;
+    localStorage.setItem('gm_player_name', trimmed);
+    setPlayerName(trimmed);
+    setShowNameModal(false);
+    syncPlayerToFirebase(trimmed, xp, bestStreak);
+  };
+
   const shareWA = ()=>{
     const pct = Math.round((correct/qs.length)*100);
     const lv = getLevel(xp);
-    const msg = `🎯 Guide Master – Israel Challenge!%0A%0A🏅 רמה: ${lv.emoji} ${lv.title}%0A✅ ניקוד: ${correct}/${qs.length} (${pct}%)%0A⚡ XP הסשן: +${sessionXp}%0A🔥 Streak מקסימלי: ${bestStreak}%0A%0Aבוא לתחרות איתי! 👇%0Ahttps://yarinshaer.github.io/guide-master/`;
-    window.open(`https://wa.me/?text=${msg}`,'_blank');
+    const shareUrl = buildShareUrl(playerName, xp, bestStreak);
+    const text = `🎯 Guide Master – Israel Challenge!\n\n🏅 רמה: ${lv.emoji} ${lv.title}\n✅ ניקוד: ${correct}/${qs.length} (${pct}%)\n⚡ XP הסשן: +${sessionXp}\n🔥 Streak מקסימלי: ${bestStreak}\n\nבוא לתחרות איתי! 👇\n${shareUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`,'_blank');
   };
 
-  if(screen==='intro') return <Intro mode={mode} setMode={setMode} startGame={startGame} xp={xp} bestStreak={bestStreak}/>;
+  const shareProfile = ()=>{
+    const shareUrl = buildShareUrl(playerName, xp, bestStreak);
+    const lv = getLevel(xp);
+    const text = `🎯 אני משחק ב-Guide Master!\n\n${lv.emoji} רמה: ${lv.title}\n⚡ ${xp} XP\n🔥 שיא רצף: ${bestStreak}\n\nבוא לתחרות! 👇\n${shareUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`,'_blank');
+  };
+
+  const friendToast = friendAdded ? <div style={{position:'fixed',top:20,left:'50%',transform:'translateX(-50%)',background:'rgba(0,255,136,0.15)',border:'1px solid #00ff88',borderRadius:12,padding:'12px 24px',zIndex:9999,color:'#00ff88',fontWeight:700,fontSize:15,animation:'fadeIn .3s ease',boxShadow:'0 0 30px rgba(0,255,136,0.2)'}}>✅ {friendAdded} נוסף/ה לטבלת ההישגים!</div> : null;
+
+  if(showNameModal) return <>{friendToast}<NameModal onSave={saveName} currentName={playerName}/></>;
+  if(screen==='leaderboard') return <>{friendToast}<Leaderboard playerId={getPlayerId()} onBack={()=>setScreen('intro')} onShare={shareProfile}/></>;
+  if(screen==='intro') return <>{friendToast}<Intro mode={mode} setMode={setMode} startGame={startGame} xp={xp} bestStreak={bestStreak} playerName={playerName} onLeaderboard={()=>setScreen('leaderboard')} onEditName={()=>setShowNameModal(true)}/></>;
   if(screen==='score') return <Score correct={correct} total={qs.length} xp={xp} sessionXp={sessionXp} best={bestStreak} onShare={shareWA} onRetry={()=>setScreen('intro')}/>;
   if(screen==='empty') return <EmptyBank mode={mode} onReset={()=>{localStorage.removeItem('gm_answered');setScreen('intro');}} onBack={()=>setScreen('intro')}/>;
 
@@ -523,13 +726,14 @@ function App(){
 }
 
 // ─── INTRO ─────────────────────────────────────────────
-function Intro({mode,setMode,startGame,xp,bestStreak}){
+function Intro({mode,setMode,startGame,xp,bestStreak,playerName,onLeaderboard,onEditName}){
   const lvl = getLevel(xp);
   return(
     <div className="app">
       <div className="intro-card">
         <div className="intro-logo">🎯 Guide Master</div>
         <div className="intro-tagline">ISRAEL TRIVIA CHALLENGE</div>
+        {playerName && <div style={{color:'#00ff88',fontSize:15,marginTop:12,marginBottom:-12}}>שלום, {playerName}! 👋 <button className="edit-name-btn" onClick={onEditName}>שנה שם</button></div>}
 
         {xp>0 && <div style={{background:'rgba(0,168,255,0.1)',border:'1px solid rgba(0,168,255,0.3)',borderRadius:10,padding:'12px 16px',marginBottom:24,fontSize:14,color:'#00a8ff',display:'flex',justifyContent:'space-between'}}>
           <span>{lvl.emoji} {lvl.title} • {xp} XP</span>
@@ -551,6 +755,7 @@ function Intro({mode,setMode,startGame,xp,bestStreak}){
         </div>
 
         <button className="start-btn" onClick={startGame}>התחל אתגר! 🚀</button>
+        <button className="lb-btn" onClick={onLeaderboard}>🏆 טבלת הישגים</button>
       </div>
     </div>
   );
@@ -599,6 +804,91 @@ function EmptyBank({mode,onReset,onBack}){
         <div className="score-sub" style={{marginBottom:20}}>ענית נכון על כל שאלות הרמה "{modeLabel}".<br/>אתה מדריך אמיתי! 🎉</div>
         <div style={{color:'#aaa',fontSize:14,marginBottom:24}}>איפוס יחזיר את כל השאלות לרצייה מחדש.</div>
         <button className="wa-btn" onClick={onReset} style={{background:'linear-gradient(135deg,#ff6b35,#ff4444)',marginBottom:12}}>🔄 איפוס שאלות</button>
+        <button className="retry-btn" onClick={onBack}>← חזרה</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── NAME MODAL ───────────────────────────────────────
+function NameModal({onSave, currentName}){
+  const [name, setName] = useState(currentName||'');
+  return(
+    <div className="app">
+      <div className="name-card">
+        <div style={{fontSize:48,marginBottom:12}}>👋</div>
+        <div style={{fontSize:24,fontWeight:900,color:'#fff',marginBottom:8}}>{currentName?'שינוי שם':'ברוכים הבאים!'}</div>
+        <div style={{fontSize:14,color:'#aaa',marginBottom:4}}>הכנס את השם שלך כדי להופיע בטבלת ההישגים</div>
+        <input
+          className="name-input"
+          placeholder="השם שלך..."
+          value={name}
+          onChange={e=>setName(e.target.value)}
+          onKeyDown={e=>{if(e.key==='Enter')onSave(name);}}
+          autoFocus
+        />
+        <button className="start-btn" onClick={()=>onSave(name)} disabled={!name.trim()} style={{opacity:name.trim()?1:0.5}}>
+          {currentName?'עדכן שם ✏️':'יאללה! 🚀'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── LEADERBOARD ──────────────────────────────────────
+function Leaderboard({playerId, onBack, onShare}){
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(()=>{
+    fetchLeaderboard(players=>{
+      setData(players);
+      setLoading(false);
+    });
+  },[]);
+
+  const medals = ['🥇','🥈','🥉'];
+
+  return(
+    <div className="app">
+      <div className="lb-card">
+        <div className="lb-title">🏆 טבלת הישגים</div>
+        <div className="lb-sub">מי המדריך הטוב ביותר?</div>
+
+        {loading ? (
+          <div className="lb-loading">⏳ טוען...</div>
+        ) : data.length===0 ? (
+          <div className="lb-empty">
+            <div style={{fontSize:48,marginBottom:16}}>🏜️</div>
+            <div>עדיין אין שחקנים בטבלה</div>
+            <div style={{fontSize:13,marginTop:8,color:'#00a8ff'}}>שחק משחק כדי להופיע ראשון!</div>
+          </div>
+        ) : (
+          <div className="lb-list">
+            {data.map((p,i)=>{
+              const isMe = p.id===playerId;
+              const rankCls = i===0?'top1':i===1?'top2':i===2?'top3':'';
+              return(
+                <div key={p.id} className={`lb-row ${rankCls} ${isMe?'me':''}`}>
+                  <div className={`lb-rank ${i===0?'gold':i===1?'silver':i===2?'bronze':''}`}>
+                    {i<3?medals[i]:i+1}
+                  </div>
+                  <div className="lb-info">
+                    <div className="lb-name">{p.name}{isMe?' (אני)':''}</div>
+                    <div className="lb-level">{p.levelEmoji} {p.levelTitle}</div>
+                  </div>
+                  <div className="lb-stats">
+                    <span className="lb-xp">{p.xp} XP</span>
+                    <span className="lb-streak">🔥 {p.bestStreak}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <button className="wa-btn" style={{marginBottom:10}} onClick={onShare}>📱 הזמן חברים ב-WhatsApp</button>
+        <div style={{fontSize:12,color:'#556',textAlign:'center',marginBottom:16}}>כשחבר פותח את הקישור שלך — הוא נוסף לטבלה שלך אוטומטית!</div>
         <button className="retry-btn" onClick={onBack}>← חזרה</button>
       </div>
     </div>
