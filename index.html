@@ -242,6 +242,17 @@
   .feedback.bad{background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);color:#ff6464;}
   .feedback-icon{font-size:20px;}
 
+  /* EXPLANATION ROW */
+  .explanation{
+    margin-top:10px;padding:12px 16px;border-radius:10px;
+    background:rgba(0,168,255,0.08);border:1px solid rgba(0,168,255,0.25);
+    font-size:13px;color:#8cc8e8;line-height:1.6;
+    display:flex;align-items:flex-start;gap:8px;
+    animation:fadeIn .4s ease;
+  }
+  .explanation .exp-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
+  .explanation .exp-text{flex:1;}
+
   @media(max-width:480px){
     .q-text{font-size:17px;}
     .opt{font-size:14px;padding:12px 14px;}
@@ -393,7 +404,7 @@ function App(){
   const shareWA = ()=>{
     const pct = Math.round((correct/qs.length)*100);
     const lv = getLevel(xp);
-    const msg = `🎯 Guide Master – Israel Challenge!%0A%0A🏅 רמה: ${lv.emoji} ${lv.title}%0A✅ ניקוד: ${correct}/${qs.length} (${pct}%)%0A⚡ XP הסשן: +${sessionXp}%0A🔥 Streak מקסימלי: ${bestStreak}%0A%0Aבוא לתחרות איתי! 👇%0Ahttps://guide-master.app`;
+    const msg = `🎯 Guide Master – Israel Challenge!%0A%0A🏅 רמה: ${lv.emoji} ${lv.title}%0A✅ ניקוד: ${correct}/${qs.length} (${pct}%)%0A⚡ XP הסשן: +${sessionXp}%0A🔥 Streak מקסימלי: ${bestStreak}%0A%0Aבוא לתחרות איתי! 👇%0Ahttps://yarinshaer.github.io/guide-master/`;
     window.open(`https://wa.me/?text=${msg}`,'_blank');
   };
 
@@ -492,6 +503,13 @@ function App(){
             {picked===q.ans
               ? `נכון! +${q.xp}XP${streak>=2?' | רצף x'+streak:''}${streak>=3?' 🔥':''}`
               : picked===-1?`פג הזמן! התשובה הנכונה סומנה`:`לא נכון. התשובה הנכונה סומנה בירוק`}
+          </div>
+        )}
+        {/* Explanation */}
+        {locked && q.exp && (
+          <div className="explanation">
+            <span className="exp-icon">💡</span>
+            <span className="exp-text">{q.exp}</span>
           </div>
         )}
         {locked && !levelUp && (
