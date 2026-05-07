@@ -365,11 +365,13 @@ function shuffle(arr){return [...arr].sort(()=>Math.random()-.5);}
 
 // ─── FIREBASE ─────────────────────────────────────────
 const FIREBASE_CONFIG = {
-  // TODO: הוסף כאן את הגדרות Firebase שלך
-  // apiKey: "...",
-  // authDomain: "...",
-  // databaseURL: "...",
-  // projectId: "...",
+  apiKey: "AIzaSyAIxxAURQbyYE9UK8zpEZD0SAMTWvnMr7w",
+  authDomain: "appcountry-b1cae.firebaseapp.com",
+  databaseURL: "https://appcountry-b1cae-default-rtdb.firebaseio.com",
+  projectId: "appcountry-b1cae",
+  storageBucket: "appcountry-b1cae.firebasestorage.app",
+  messagingSenderId: "172746568682",
+  appId: "1:172746568682:web:bd10d693e3deabe2ca3893"
 };
 
 let db = null;
@@ -583,7 +585,10 @@ function App(){
 
   useEffect(()=>()=>clearInterval(timerRef.current),[]);
 
-  // Sync to Firebase when game ends
+  // Sync to Firebase on load + when game ends
+  useEffect(()=>{
+    if(playerName) syncPlayerToFirebase(playerName, xp, bestStreak);
+  },[]);
   useEffect(()=>{
     if(screen==='score' && playerName){
       syncPlayerToFirebase(playerName, xp, bestStreak);
