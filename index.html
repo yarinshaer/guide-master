@@ -477,6 +477,8 @@ function App(){
   const [levelUp,setLevelUp] = useState(null);
   const [xpFloat,setXpFloat] = useState(null);
   const [sessionXp,setSessionXp] = useState(0);
+  const [showExp,setShowExp] = useState(false);
+  const [lastEarned,setLastEarned] = useState(0);
   const timerRef = useRef(null);
   const prevLevel = useRef(getLevel(xp).n);
   const handleTimeoutRef = useRef(null);
@@ -516,7 +518,8 @@ function App(){
     clearInterval(timerRef.current);
     setPicked(-1);
     setStreak(0);
-    // no auto-advance — player clicks "next" button to continue
+    setLastEarned(0);
+    setTimeout(()=>setShowExp(true),900);
   };
   handleTimeoutRef.current = handleTimeout;
 
@@ -534,6 +537,7 @@ function App(){
       const mult = newStreak>=8?5:newStreak>=5?3:newStreak>=3?2:newStreak===2?1.5:1;
       const timeBonus = Math.round((timer/timerMax)*q.xp*0.5);
       const earned = Math.round(q.xp*mult)+timeBonus;
+      setLastEarned(earned);
       const newXp = xp+earned;
       setXp(newXp);
       setSessionXp(s=>s+earned);
@@ -559,14 +563,17 @@ function App(){
         prevLevel.current = newLevel.n;
       }
     } else {
+      setLastEarned(0);
       setStreak(0);
       setXpFloat({v:'✗',ok:false});
       setTimeout(()=>setXpFloat(null),800);
     }
-    // no auto-advance — player reads explanation and clicks "next"
+    // Show answer colors briefly, then flip to explanation page
+    setTimeout(()=>setShowExp(true),900);
   };
 
   const advance = ()=>{
+    setShowExp(false);
     const next = idx+1;
     if(next>=qs.length){setScreen('score');return;}
     setIdx(next);setPicked(null);setLocked(false);
@@ -666,61 +673,79 @@ function App(){
         <div className="xp-bar-bg"><div className="xp-bar-fill" style={{width:`${getLevelPct(xp)}%`}}/></div>
       </div>
 
-      {/* Card */}
-      <div className="card" key={idx}>
-        {/* Dots */}
-        <div className="dots-row">
-          {qs.map((_,i)=><div key={i} className={`dot ${i<idx?'done':i===idx?'cur':''}`}/>)}
-        </div>
-
-        {/* Timer */}
-        <div className="timer-row">
-          <div className={`timer-circle ${timerPct<=25?'danger':timerPct<=50?'warn':''}`}>{timer}</div>
-          <div className="timer-bar-bg">
-            <div className="timer-bar-fill" style={{width:`${timerPct}%`,background:timerColor}}/>
+      {showExp ? (
+        /* ===== EXPLANATION PAGE ===== */
+        <div className="card" key={`exp-${idx}`}>
+          <div className="dots-row">
+            {qs.map((_,i)=><div key={i} className={`dot ${i<idx||(i===idx)?'done':''}`}/>)}
           </div>
-        </div>
 
-        {/* Diff + cat */}
-        <span className={`diff-badge diff-${q.d}`}>{q.d==='easy'?'קל 🟢':q.d==='medium'?'בינוני 🟡':'קשה 🔴'}</span>
-        <div className="q-category">{q.cat}</div>
-        <div className="q-text">{q.q}</div>
-
-        {/* Options */}
-        <div className="options">
-          {q.opts.map((opt,i)=>{
-            let cls='opt';
-            if(locked){
-              if(i===q.ans) cls+=' correct';
-              else if(i===picked && picked!==q.ans) cls+=' wrong';
-              else if(picked!==null && i!==q.ans && i!==picked) cls+=' reveal';
-            }
-            return <button key={i} className={cls} onClick={()=>handlePick(i)} disabled={locked}>{opt}</button>;
-          })}
-        </div>
-
-        {/* Feedback */}
-        {locked && picked!==null && (
-          <div className={`feedback ${picked===q.ans?'good':'bad'}`}>
-            <span className="feedback-icon">{picked===q.ans?'✅':'❌'}</span>
-            {picked===q.ans
-              ? `נכון! +${q.xp}XP${streak>=2?' | רצף x'+streak:''}${streak>=3?' 🔥':''}`
-              : picked===-1?`פג הזמן! התשובה הנכונה סומנה`:`לא נכון. התשובה הנכונה סומנה בירוק`}
+          <div style={{textAlign:'center',marginBottom:20}}>
+            <div style={{fontSize:56,marginBottom:8}}>{picked===q.ans?'✅':picked===-1?'⏰':'❌'}</div>
+            <div style={{fontSize:24,fontWeight:900,color:picked===q.ans?'#00ff88':'#ff4444'}}>
+              {picked===q.ans?'תשובה נכונה!':picked===-1?'פג הזמן!':'תשובה שגויה'}
+            </div>
+            {picked===q.ans && lastEarned>0 && <div style={{color:'#00ff88',fontSize:18,fontWeight:700,marginTop:4}}>+{lastEarned} XP</div>}
           </div>
-        )}
-        {/* Explanation */}
-        {locked && q.exp && (
-          <div className="explanation">
-            <span className="exp-icon">💡</span>
-            <span className="exp-text">{q.exp}</span>
+
+          <div style={{background:'rgba(0,255,136,0.08)',border:'1px solid rgba(0,255,136,0.3)',borderRadius:10,padding:'12px 16px',marginBottom:16}}>
+            <div style={{fontSize:11,color:'#556',textTransform:'uppercase',letterSpacing:1,marginBottom:6}}>התשובה הנכונה</div>
+            <div style={{fontSize:17,fontWeight:700,color:'#00ff88'}}>{q.opts[q.ans]}</div>
           </div>
-        )}
-        {locked && !levelUp && (
-          <button className="next-btn" onClick={advance}>
-            {idx===qs.length-1?'ראה תוצאות':'שאלה הבאה ›'}
-          </button>
-        )}
-      </div>
+
+          {q.exp && (
+            <div className="explanation" style={{marginTop:0,marginBottom:20,fontSize:15,lineHeight:1.7}}>
+              <span className="exp-icon" style={{fontSize:20}}>💡</span>
+              <span className="exp-text">{q.exp}</span>
+            </div>
+          )}
+
+          {!levelUp && (
+            <button className="next-btn" onClick={advance}>
+              {idx===qs.length-1?'ראה תוצאות 🏆':'שאלה הבאה ›'}
+            </button>
+          )}
+        </div>
+      ) : (
+        /* ===== QUESTION CARD ===== */
+        <div className="card" key={idx}>
+          <div className="dots-row">
+            {qs.map((_,i)=><div key={i} className={`dot ${i<idx?'done':i===idx?'cur':''}`}/>)}
+          </div>
+
+          <div className="timer-row">
+            <div className={`timer-circle ${timerPct<=25?'danger':timerPct<=50?'warn':''}`}>{timer}</div>
+            <div className="timer-bar-bg">
+              <div className="timer-bar-fill" style={{width:`${timerPct}%`,background:timerColor}}/>
+            </div>
+          </div>
+
+          <span className={`diff-badge diff-${q.d}`}>{q.d==='easy'?'קל 🟢':q.d==='medium'?'בינוני 🟡':'קשה 🔴'}</span>
+          <div className="q-category">{q.cat}</div>
+          <div className="q-text">{q.q}</div>
+
+          <div className="options">
+            {q.opts.map((opt,i)=>{
+              let cls='opt';
+              if(locked){
+                if(i===q.ans) cls+=' correct';
+                else if(i===picked && picked!==q.ans) cls+=' wrong';
+                else if(picked!==null && i!==q.ans && i!==picked) cls+=' reveal';
+              }
+              return <button key={i} className={cls} onClick={()=>handlePick(i)} disabled={locked}>{opt}</button>;
+            })}
+          </div>
+
+          {locked && picked!==null && (
+            <div className={`feedback ${picked===q.ans?'good':'bad'}`}>
+              <span className="feedback-icon">{picked===q.ans?'✅':'❌'}</span>
+              {picked===q.ans
+                ? `נכון! +${lastEarned} XP`
+                : picked===-1?'פג הזמן!':'לא נכון'}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
