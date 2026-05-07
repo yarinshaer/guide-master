@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎯 Guide Master - Israel Challenge</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="questions.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Heebo',sans-serif;background:#070b1a;color:#e0e0e0;direction:rtl;overflow-x:hidden;}
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-track{background:#0a0e27;}
+  ::-webkit-scrollbar-thumb{background:#00ff88;border-radius:2px;}
+
+  /* ===== GRID BACKGROUND ===== */
+  .grid-bg{
+    position:fixed;inset:0;
+    background-image:linear-gradient(rgba(0,255,136,0.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,255,136,0.04) 1px,transparent 1px);
+    background-size:40px 40px;
+    pointer-events:none;z-index:0;
+  }
+
+  /* ===== GLOW ORBS ===== */
+  .orb{position:fixed;border-radius:50%;filter:blur(80px);pointer-events:none;z-index:0;}
+  .orb1{width:400px;height:400px;background:rgba(0,255,136,0.08);top:-100px;right:-100px;animation:orbFloat 10s ease-in-out infinite;}
+  .orb2{width:300px;height:300px;background:rgba(0,168,255,0.08);bottom:-80px;left:-80px;animation:orbFloat 14s ease-in-out infinite reverse;}
+  @keyframes orbFloat{0%,100%{transform:translate(0,0);}50%{transform:translate(30px,30px);}}
+
+  .app{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;position:relative;z-index:1;}
+
+  /* ===== HUD ===== */
+  .hud{
+    width:100%;max-width:600px;
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:20px;gap:10px;
+  }
+  .hud-box{
+    background:rgba(15,20,50,0.8);
+    border:1px solid rgba(0,255,136,0.25);
+    border-radius:10px;padding:10px 16px;
+    display:flex;flex-direction:column;align-items:center;
+    min-width:80px;
+  }
+  .hud-val{font-size:20px;font-weight:900;color:#00ff88;line-height:1;}
+  .hud-label{font-size:10px;color:#5a7a6a;text-transform:uppercase;letter-spacing:1px;margin-top:3px;}
+  .hud-box.streak .hud-val{color:#ffb700;}
+  .hud-box.level .hud-val{font-size:13px;color:#00a8ff;}
+
+  /* ===== XP BAR ===== */
+  .xp-bar-wrap{width:100%;max-width:600px;margin-bottom:20px;}
+  .xp-bar-header{display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px;color:#556;}
+  .xp-bar-header span:first-child{color:#00a8ff;font-weight:700;}
+  .xp-bar-bg{height:6px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;}
+  .xp-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#00ff88,#00a8ff);transition:width 0.6s cubic-bezier(.4,0,.2,1);}
+
+  /* ===== CARD ===== */
+  .card{
+    width:100%;max-width:600px;
+    background:rgba(10,14,35,0.85);
+    border:1.5px solid rgba(0,255,136,0.3);
+    border-radius:16px;padding:28px;
+    box-shadow:0 0 40px rgba(0,255,136,0.08),inset 0 0 30px rgba(0,255,136,0.03);
+    animation:cardIn .35s cubic-bezier(.4,0,.2,1);
+  }
+  @keyframes cardIn{from{opacity:0;transform:translateY(16px) scale(.97);}to{opacity:1;transform:none;}}
+
+  /* ===== TIMER ===== */
+  .timer-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+  .timer-circle{
+    width:52px;height:52px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;font-weight:900;
+    border:2.5px solid #00ff88;
+    color:#00ff88;
+    transition:border-color .3s,color .3s;
+    flex-shrink:0;
+    background:rgba(0,255,136,0.06);
+  }
+  .timer-circle.warn{border-color:#ffb700;color:#ffb700;background:rgba(255,183,0,0.1);}
+  .timer-circle.danger{border-color:#ff4444;color:#ff4444;background:rgba(255,68,68,0.1);animation:pulse .5s infinite;}
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+  .timer-bar-bg{flex:1;height:6px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;}
+  .timer-bar-fill{height:100%;border-radius:3px;transition:width .9s linear,background .3s;}
+
+  /* ===== DIFFICULTY BADGE ===== */
+  .diff-badge{
+    display:inline-block;padding:3px 12px;border-radius:20px;
+    font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+    margin-bottom:14px;
+  }
+  .diff-easy{background:rgba(0,255,136,0.15);color:#00ff88;border:1px solid rgba(0,255,136,0.3);}
+  .diff-medium{background:rgba(255,183,0,0.15);color:#ffb700;border:1px solid rgba(255,183,0,0.3);}
+  .diff-hard{background:rgba(255,68,68,0.15);color:#ff4444;border:1px solid rgba(255,68,68,0.3);}
+
+  /* ===== QUESTION ===== */
+  .q-category{font-size:12px;color:#00a8ff;font-weight:600;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;}
+  .q-text{font-size:20px;font-weight:700;color:#fff;line-height:1.45;margin-bottom:24px;}
+
+  /* ===== OPTIONS ===== */
+  .options{display:flex;flex-direction:column;gap:10px;}
+  .opt{
+    padding:14px 18px;
+    background:rgba(0,255,136,0.04);
+    border:1.5px solid rgba(0,255,136,0.2);
+    border-radius:10px;
+    color:#c0e8d0;font-size:15px;font-weight:500;
+    cursor:pointer;text-align:right;
+    transition:all .2s ease;
+    position:relative;overflow:hidden;
+  }
+  .opt::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,255,136,0.08),transparent);opacity:0;transition:.2s;}
+  .opt:hover:not(:disabled)::before{opacity:1;}
+  .opt:hover:not(:disabled){border-color:#00ff88;transform:translateX(-6px);box-shadow:4px 0 20px rgba(0,255,136,0.2);}
+  .opt.correct{background:rgba(0,255,136,0.2);border-color:#00ff88;color:#fff;box-shadow:0 0 20px rgba(0,255,136,0.3);}
+  .opt.wrong{background:rgba(255,68,68,0.15);border-color:#ff4444;color:#ff8888;}
+  .opt.reveal{background:rgba(0,255,136,0.1);border-color:rgba(0,255,136,0.5);color:#aaa;}
+  .opt:disabled{cursor:default;}
+
+  /* ===== COMBO POPUP ===== */
+  .combo-pop{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-size:56px;font-weight:900;
+    pointer-events:none;z-index:999;
+    animation:comboPop .8s cubic-bezier(.4,0,.2,1) forwards;
+    text-shadow:0 0 30px currentColor;
+  }
+  @keyframes comboPop{0%{opacity:0;transform:translate(-50%,-60%) scale(.5);}40%{opacity:1;transform:translate(-50%,-50%) scale(1.2);}70%{opacity:1;transform:translate(-50%,-50%) scale(1);}100%{opacity:0;transform:translate(-50%,-40%) scale(0.9);}}
+
+  /* ===== LEVEL UP ===== */
+  .levelup-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.85);
+    display:flex;align-items:center;justify-content:center;
+    z-index:1000;animation:fadeIn .3s ease;
+  }
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  .levelup-card{
+    background:linear-gradient(135deg,#0a0e27,#1a1a3f);
+    border:2px solid #ffb700;border-radius:20px;padding:50px 40px;
+    text-align:center;box-shadow:0 0 60px rgba(255,183,0,0.4);
+    animation:levelUpPop .5s cubic-bezier(.4,0,.2,1);max-width:380px;width:90%;
+  }
+  @keyframes levelUpPop{from{transform:scale(.5);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .levelup-emoji{font-size:72px;display:block;margin-bottom:16px;animation:spin 1s ease-out;}
+  @keyframes spin{from{transform:rotate(-30deg) scale(.8);}to{transform:rotate(0) scale(1);}}
+  .levelup-title{font-size:14px;color:#ffb700;letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;}
+  .levelup-name{font-size:36px;font-weight:900;background:linear-gradient(135deg,#ffb700,#ff8c00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:20px;}
+  .levelup-btn{background:linear-gradient(135deg,#ffb700,#ff8c00);color:#0a0e27;border:none;border-radius:10px;padding:14px 40px;font-size:16px;font-weight:900;cursor:pointer;}
+
+  /* ===== NEXT BUTTON ===== */
+  .next-btn{
+    width:100%;margin-top:18px;padding:14px;
+    background:linear-gradient(135deg,#00ff88,#00a8ff);
+    color:#070b1a;border:none;border-radius:10px;
+    font-size:16px;font-weight:900;cursor:pointer;
+    font-family:'Heebo',sans-serif;letter-spacing:1px;
+    transition:all .2s ease;
+  }
+  .next-btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,255,136,0.35);}
+
+  /* ===== XP FLOAT ===== */
+  .xp-float{
+    position:fixed;pointer-events:none;z-index:900;
+    font-weight:900;font-size:22px;
+    animation:floatUp .9s ease-out forwards;
+  }
+  @keyframes floatUp{0%{opacity:1;transform:translateY(0);}100%{opacity:0;transform:translateY(-80px);}}
+
+  /* ===== SCORE SCREEN ===== */
+  .score-card{
+    width:100%;max-width:600px;
+    background:rgba(10,14,35,0.9);
+    border:2px solid #00a8ff;border-radius:16px;padding:36px 28px;
+    text-align:center;box-shadow:0 0 50px rgba(0,168,255,0.2);
+    animation:cardIn .5s cubic-bezier(.4,0,.2,1);
+  }
+  .score-emoji{font-size:72px;display:block;margin-bottom:16px;}
+  .score-big{font-size:52px;font-weight:900;background:linear-gradient(135deg,#00ff88,#00a8ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .score-sub{font-size:15px;color:#00a8ff;margin-bottom:28px;letter-spacing:1px;}
+  .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;}
+  .stat-box{background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.2);border-radius:10px;padding:16px 10px;text-align:center;}
+  .stat-v{font-size:26px;font-weight:900;color:#00ff88;}
+  .stat-l{font-size:11px;color:#556;text-transform:uppercase;letter-spacing:1px;margin-top:4px;}
+  .wa-btn{
+    width:100%;padding:16px;background:#25D366;border:none;border-radius:10px;
+    font-size:16px;font-weight:700;color:#fff;cursor:pointer;margin-bottom:12px;
+    font-family:'Heebo',sans-serif;letter-spacing:.5px;
+    transition:all .2s ease;
+  }
+  .wa-btn:hover{background:#1da851;transform:translateY(-2px);}
+  .retry-btn{
+    width:100%;padding:14px;background:transparent;
+    border:1.5px solid rgba(0,255,136,0.4);border-radius:10px;
+    font-size:15px;font-weight:600;color:#00ff88;cursor:pointer;
+    font-family:'Heebo',sans-serif;transition:all .2s ease;
+  }
+  .retry-btn:hover{background:rgba(0,255,136,0.1);}
+
+  /* ===== INTRO ===== */
+  .intro-card{
+    width:100%;max-width:600px;
+    background:rgba(10,14,35,0.9);border:1.5px solid rgba(0,255,136,0.3);
+    border-radius:16px;padding:40px 28px;text-align:center;
+    animation:cardIn .4s ease;
+  }
+  .intro-logo{font-size:52px;font-weight:900;background:linear-gradient(135deg,#00ff88,#00a8ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;}
+  .intro-tagline{color:#00a8ff;font-size:14px;letter-spacing:2px;margin-bottom:30px;}
+  .level-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:28px;}
+  .level-chip{padding:8px 16px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid;transition:all .2s;}
+  .level-chip.easy-chip{border-color:#00ff88;color:#00ff88;background:rgba(0,255,136,0.08);}
+  .level-chip.easy-chip:hover,.level-chip.easy-chip.sel{background:rgba(0,255,136,0.25);}
+  .level-chip.med-chip{border-color:#ffb700;color:#ffb700;background:rgba(255,183,0,0.08);}
+  .level-chip.med-chip:hover,.level-chip.med-chip.sel{background:rgba(255,183,0,0.25);}
+  .level-chip.hard-chip{border-color:#ff4444;color:#ff4444;background:rgba(255,68,68,0.08);}
+  .level-chip.hard-chip:hover,.level-chip.hard-chip.sel{background:rgba(255,68,68,0.25);}
+  .level-chip.all-chip{border-color:#00a8ff;color:#00a8ff;background:rgba(0,168,255,0.08);}
+  .level-chip.all-chip:hover,.level-chip.all-chip.sel{background:rgba(0,168,255,0.25);}
+  .start-btn{
+    width:100%;padding:16px;background:linear-gradient(135deg,#00ff88,#00a8ff);
+    color:#070b1a;border:none;border-radius:10px;font-size:18px;font-weight:900;
+    cursor:pointer;font-family:'Heebo',sans-serif;letter-spacing:1px;
+    transition:all .2s;
+  }
+  .start-btn:hover{transform:translateY(-2px);box-shadow:0 10px 40px rgba(0,255,136,0.35);}
+  .how-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px;text-align:right;}
+  .how-item{background:rgba(0,255,136,0.05);border:1px solid rgba(0,255,136,0.15);border-radius:10px;padding:12px 14px;font-size:13px;color:#aaa;line-height:1.5;}
+  .how-item span{display:block;font-size:18px;margin-bottom:4px;}
+
+  /* progress dots */
+  .dots-row{display:flex;gap:6px;justify-content:center;margin-bottom:20px;}
+  .dot{width:8px;height:8px;border-radius:50%;background:rgba(0,255,136,0.2);border:1.5px solid rgba(0,255,136,0.3);transition:.3s;}
+  .dot.done{background:#00a8ff;border-color:#00a8ff;}
+  .dot.cur{background:#00ff88;border-color:#00ff88;transform:scale(1.4);box-shadow:0 0 8px #00ff88;}
+
+  /* FEEDBACK ROW */
+  .feedback{padding:12px 16px;border-radius:10px;margin-top:16px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px;}
+  .feedback.good{background:rgba(0,255,136,0.12);border:1px solid rgba(0,255,136,0.3);color:#00ff88;}
+  .feedback.bad{background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);color:#ff6464;}
+  .feedback-icon{font-size:20px;}
+
+  @media(max-width:480px){
+    .q-text{font-size:17px;}
+    .opt{font-size:14px;padding:12px 14px;}
+    .hud-val{font-size:17px;}
+    .how-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback} = React;
+
+// ─── DATA ──────────────────────────────────────────────
+// ALL_QUESTIONS is loaded from questions.js (300 questions)
+
+const LEVELS = [
+  {min:0,max:150,n:1,title:'מתחיל',emoji:'🌱',color:'#4caf50'},
+  {min:150,max:400,n:2,title:'תלמיד',emoji:'📖',color:'#00a8ff'},
+  {min:400,max:750,n:3,title:'מדריך',emoji:'🗺️',color:'#a78bfa'},
+  {min:750,max:1200,n:4,title:'מדריך בכיר',emoji:'⭐',color:'#ffb700'},
+  {min:1200,max:2000,n:5,title:'מומחה',emoji:'🔥',color:'#ff6b35'},
+  {min:2000,max:9999,n:6,title:'אגדה',emoji:'🏆',color:'#ff4444'},
+];
+
+const COMBO_MSGS = ['','','','🔥 x2','⚡ x3','💥 x4','🚀 x5','👑 MASTER!'];
+const getLevel = xp => LEVELS.find((l,i) => xp >= l.min && (xp < l.max || i===LEVELS.length-1)) || LEVELS[0];
+const getLevelPct = xp => {const l=getLevel(xp);return Math.min(100,((xp-l.min)/(l.max-l.min))*100);};
+
+function shuffle(arr){return [...arr].sort(()=>Math.random()-.5);}
+
+// ─── MAIN APP ──────────────────────────────────────────
+function App(){
+  const [screen,setScreen] = useState('intro'); // intro | game | score
+  const [mode,setMode] = useState('all');
+  const [qs,setQs] = useState([]);
+  const [idx,setIdx] = useState(0);
+  const [xp,setXp] = useState(()=>+localStorage.getItem('gm_xp')||0);
+  const [streak,setStreak] = useState(0);
+  const [bestStreak,setBestStreak] = useState(()=>+localStorage.getItem('gm_best')||0);
+  const [correct,setCorrect] = useState(0);
+  const [picked,setPicked] = useState(null);
+  const [locked,setLocked] = useState(false);
+  const [timer,setTimer] = useState(0);
+  const [timerMax,setTimerMax] = useState(0);
+  const [comboMsg,setComboMsg] = useState('');
+  const [levelUp,setLevelUp] = useState(null);
+  const [xpFloat,setXpFloat] = useState(null);
+  const [sessionXp,setSessionXp] = useState(0);
+  const timerRef = useRef(null);
+  const prevLevel = useRef(getLevel(xp).n);
+
+  const startGame = useCallback(()=>{
+    const answered = JSON.parse(localStorage.getItem('gm_answered')||'[]');
+    const base = mode==='all' ? ALL_QUESTIONS : ALL_QUESTIONS.filter(q=>q.d===mode);
+    const pool = base.filter(q=>!answered.includes(q.id));
+    if(pool.length<10){setScreen('empty');return;}
+    const picked = shuffle(pool).slice(0,10);
+    setQs(picked);
+    setIdx(0);setPicked(null);setLocked(false);
+    setCorrect(0);setStreak(0);setSessionXp(0);
+    setScreen('game');
+    startTimer(picked[0].t);
+  },[mode]);
+
+  const startTimer = (sec)=>{
+    clearInterval(timerRef.current);
+    setTimer(sec);setTimerMax(sec);
+    timerRef.current = setInterval(()=>{
+      setTimer(p=>{
+        if(p<=1){clearInterval(timerRef.current);handleTimeout();return 0;}
+        return p-1;
+      });
+    },1000);
+  };
+
+  const handleTimeout = useCallback(()=>{
+    if(locked) return;
+    setLocked(true);
+    clearInterval(timerRef.current);
+    setPicked(-1);
+    setStreak(0);
+    setTimeout(advance,1600);
+  },[locked]);
+
+  const handlePick = (i)=>{
+    if(locked) return;
+    clearInterval(timerRef.current);
+    setLocked(true);
+    setPicked(i);
+    const q = qs[idx];
+    const ok = i===q.ans;
+    if(ok){
+      const newStreak = streak+1;
+      setStreak(newStreak);
+      if(newStreak>bestStreak){setBestStreak(newStreak);localStorage.setItem('gm_best',newStreak);}
+      const mult = newStreak>=8?5:newStreak>=5?3:newStreak>=3?2:newStreak===2?1.5:1;
+      const timeBonus = Math.round((timer/timerMax)*q.xp*0.5);
+      const earned = Math.round(q.xp*mult)+timeBonus;
+      const newXp = xp+earned;
+      setXp(newXp);
+      setSessionXp(s=>s+earned);
+      localStorage.setItem('gm_xp',newXp);
+      setCorrect(c=>c+1);
+      // no-repeat: save answered ID
+      if(q.id){
+        const done = JSON.parse(localStorage.getItem('gm_answered')||'[]');
+        if(!done.includes(q.id)){localStorage.setItem('gm_answered',JSON.stringify([...done,q.id]));}
+      }
+      // xp float
+      setXpFloat({v:`+${earned} XP`,ok:true});
+      setTimeout(()=>setXpFloat(null),1000);
+      // combo
+      if(newStreak>=3 && COMBO_MSGS[Math.min(newStreak,7)]){
+        setComboMsg(COMBO_MSGS[Math.min(newStreak,7)]);
+        setTimeout(()=>setComboMsg(''),800);
+      }
+      // level up
+      const newLevel = getLevel(newXp);
+      if(newLevel.n > prevLevel.current){
+        setLevelUp(newLevel);
+        prevLevel.current = newLevel.n;
+      }
+    } else {
+      setStreak(0);
+      setXpFloat({v:'✗',ok:false});
+      setTimeout(()=>setXpFloat(null),800);
+    }
+    if(!levelUp) setTimeout(advance,1500);
+  };
+
+  const advance = ()=>{
+    const next = idx+1;
+    if(next>=qs.length){setScreen('score');return;}
+    setIdx(next);setPicked(null);setLocked(false);
+    startTimer(qs[next].t);
+  };
+
+  useEffect(()=>()=>clearInterval(timerRef.current),[]);
+
+  const shareWA = ()=>{
+    const pct = Math.round((correct/qs.length)*100);
+    const lv = getLevel(xp);
+    const msg = `🎯 Guide Master – Israel Challenge!%0A%0A🏅 רמה: ${lv.emoji} ${lv.title}%0A✅ ניקוד: ${correct}/${qs.length} (${pct}%)%0A⚡ XP הסשן: +${sessionXp}%0A🔥 Streak מקסימלי: ${bestStreak}%0A%0Aבוא לתחרות איתי! 👇%0Ahttps://guide-master.app`;
+    window.open(`https://wa.me/?text=${msg}`,'_blank');
+  };
+
+  if(screen==='intro') return <Intro mode={mode} setMode={setMode} startGame={startGame} xp={xp} bestStreak={bestStreak}/>;
+  if(screen==='score') return <Score correct={correct} total={qs.length} xp={xp} sessionXp={sessionXp} best={bestStreak} onShare={shareWA} onRetry={()=>setScreen('intro')}/>;
+  if(screen==='empty') return <EmptyBank mode={mode} onReset={()=>{localStorage.removeItem('gm_answered');setScreen('intro');}} onBack={()=>setScreen('intro')}/>;
+
+  const q = qs[idx];
+  const lvl = getLevel(xp);
+  const timerPct = (timer/timerMax)*100;
+  const timerColor = timerPct>50?'#00ff88':timerPct>25?'#ffb700':'#ff4444';
+  const timerClass = timerPct>50?'':'warn' || timerPct>25?'warn':'danger';
+
+  return (
+    <div className="app">
+      {/* XP Float */}
+      {xpFloat && <div className="xp-float" style={{color:xpFloat.ok?'#00ff88':'#ff4444',top:'45%',left:'50%',transform:'translateX(-50%)'}}>{xpFloat.v}</div>}
+      {/* Combo */}
+      {comboMsg && <div className="combo-pop" style={{color:'#ffb700'}}>{comboMsg}</div>}
+      {/* Level Up */}
+      {levelUp && <div className="levelup-overlay">
+        <div className="levelup-card">
+          <span className="levelup-emoji">{levelUp.emoji}</span>
+          <div className="levelup-title">🎊 עליית רמה!</div>
+          <div className="levelup-name" style={{background:`linear-gradient(135deg,${levelUp.color},#fff)`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>{levelUp.title}</div>
+          <button className="levelup-btn" onClick={()=>{setLevelUp(null);advance();}}>המשך! 🚀</button>
+        </div>
+      </div>}
+
+      {/* HUD */}
+      <div className="hud">
+        <div className="hud-box level">
+          <div className="hud-val">{lvl.emoji} {lvl.title}</div>
+          <div className="hud-label">רמה {lvl.n}</div>
+        </div>
+        <div className="hud-box">
+          <div className="hud-val">{xp}</div>
+          <div className="hud-label">XP</div>
+        </div>
+        <div className="hud-box streak">
+          <div className="hud-val">🔥{streak}</div>
+          <div className="hud-label">רצף</div>
+        </div>
+        <div className="hud-box">
+          <div className="hud-val">{idx+1}/{qs.length}</div>
+          <div className="hud-label">שאלה</div>
+        </div>
+      </div>
+
+      {/* XP Bar */}
+      <div className="xp-bar-wrap">
+        <div className="xp-bar-header">
+          <span>{lvl.title} → {LEVELS[Math.min(lvl.n,LEVELS.length-1)].title}</span>
+          <span>{xp} / {lvl.max} XP</span>
+        </div>
+        <div className="xp-bar-bg"><div className="xp-bar-fill" style={{width:`${getLevelPct(xp)}%`}}/></div>
+      </div>
+
+      {/* Card */}
+      <div className="card" key={idx}>
+        {/* Dots */}
+        <div className="dots-row">
+          {qs.map((_,i)=><div key={i} className={`dot ${i<idx?'done':i===idx?'cur':''}`}/>)}
+        </div>
+
+        {/* Timer */}
+        <div className="timer-row">
+          <div className={`timer-circle ${timerPct<=25?'danger':timerPct<=50?'warn':''}`}>{timer}</div>
+          <div className="timer-bar-bg">
+            <div className="timer-bar-fill" style={{width:`${timerPct}%`,background:timerColor}}/>
+          </div>
+        </div>
+
+        {/* Diff + cat */}
+        <span className={`diff-badge diff-${q.d}`}>{q.d==='easy'?'קל 🟢':q.d==='medium'?'בינוני 🟡':'קשה 🔴'}</span>
+        <div className="q-category">{q.cat}</div>
+        <div className="q-text">{q.q}</div>
+
+        {/* Options */}
+        <div className="options">
+          {q.opts.map((opt,i)=>{
+            let cls='opt';
+            if(locked){
+              if(i===q.ans) cls+=' correct';
+              else if(i===picked && picked!==q.ans) cls+=' wrong';
+              else if(picked!==null && i!==q.ans && i!==picked) cls+=' reveal';
+            }
+            return <button key={i} className={cls} onClick={()=>handlePick(i)} disabled={locked}>{opt}</button>;
+          })}
+        </div>
+
+        {/* Feedback */}
+        {locked && picked!==null && (
+          <div className={`feedback ${picked===q.ans?'good':'bad'}`}>
+            <span className="feedback-icon">{picked===q.ans?'✅':'❌'}</span>
+            {picked===q.ans
+              ? `נכון! +${q.xp}XP${streak>=2?' | רצף x'+streak:''}${streak>=3?' 🔥':''}`
+              : picked===-1?`פג הזמן! התשובה הנכונה סומנה`:`לא נכון. התשובה הנכונה סומנה בירוק`}
+          </div>
+        )}
+        {locked && !levelUp && (
+          <button className="next-btn" onClick={advance}>
+            {idx===qs.length-1?'ראה תוצאות':'שאלה הבאה ›'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── INTRO ─────────────────────────────────────────────
+function Intro({mode,setMode,startGame,xp,bestStreak}){
+  const lvl = getLevel(xp);
+  return(
+    <div className="app">
+      <div className="intro-card">
+        <div className="intro-logo">🎯 Guide Master</div>
+        <div className="intro-tagline">ISRAEL TRIVIA CHALLENGE</div>
+
+        {xp>0 && <div style={{background:'rgba(0,168,255,0.1)',border:'1px solid rgba(0,168,255,0.3)',borderRadius:10,padding:'12px 16px',marginBottom:24,fontSize:14,color:'#00a8ff',display:'flex',justifyContent:'space-between'}}>
+          <span>{lvl.emoji} {lvl.title} • {xp} XP</span>
+          <span>🔥 שיא: {bestStreak}</span>
+        </div>}
+
+        <div className="how-grid">
+          <div className="how-item"><span>⏱️</span>טיימר לכל שאלה – ענה מהר לבונוס XP</div>
+          <div className="how-item"><span>🔥</span>רצף תשובות נכונות מכפיל את הXP שלך</div>
+          <div className="how-item"><span>📈</span>צבור XP ועלה ברמות מ'מתחיל' עד 'אגדה'</div>
+          <div className="how-item"><span>🏆</span>שתף את הציון שלך בWhatsApp</div>
+        </div>
+
+        <div style={{fontSize:13,color:'#556',marginBottom:12,textAlign:'center'}}>בחר רמת קושי:</div>
+        <div className="level-row">
+          {[['all','הכל 🎯','all-chip'],['easy','קל 🟢','easy-chip'],['medium','בינוני 🟡','med-chip'],['hard','קשה 🔴','hard-chip']].map(([v,l,c])=>(
+            <div key={v} className={`level-chip ${c} ${mode===v?'sel':''}`} onClick={()=>setMode(v)}>{l}</div>
+          ))}
+        </div>
+
+        <button className="start-btn" onClick={startGame}>התחל אתגר! 🚀</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── SCORE ─────────────────────────────────────────────
+function Score({correct,total,xp,sessionXp,best,onShare,onRetry}){
+  const pct = Math.round((correct/total)*100);
+  const lvl = getLevel(xp);
+  const em = pct===100?'🏆':pct>=80?'🔥':pct>=60?'🎉':pct>=40?'💪':'📚';
+  const msg = pct===100?'מושלם! אגדה אמיתית!':pct>=80?'כל הכבוד! מדריך מצוין!':pct>=60?'טוב מאוד! ממשיך לגדול!':pct>=40?'לא רע! עוד קצת ותהיה מדריך!':'בואו נלמד עוד!';
+  return(
+    <div className="app">
+      <div className="score-card">
+        <span className="score-emoji">{em}</span>
+        <div className="score-big">{correct}/{total}</div>
+        <div className="score-sub">{msg}</div>
+        <div className="stats-grid">
+          <div className="stat-box"><div className="stat-v">{pct}%</div><div className="stat-l">ניקוד</div></div>
+          <div className="stat-box"><div className="stat-v" style={{color:'#ffb700'}}>+{sessionXp}</div><div className="stat-l">XP הסשן</div></div>
+          <div className="stat-box"><div className="stat-v" style={{color:'#00a8ff'}}>{lvl.emoji} {lvl.n}</div><div className="stat-l">רמה נוכחית</div></div>
+          <div className="stat-box"><div className="stat-v" style={{color:'#ff6b35'}}>🔥{best}</div><div className="stat-l">שיא רצף</div></div>
+        </div>
+        <div style={{background:'rgba(0,255,136,0.07)',border:'1px solid rgba(0,255,136,0.2)',borderRadius:10,padding:'14px 16px',marginBottom:20,fontSize:14,color:'#aaa'}}>
+          <div style={{color:'#00ff88',fontWeight:700,marginBottom:6}}>{lvl.emoji} {lvl.title}</div>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
+            <span>XP כולל: {xp}</span>
+            <span>עד הרמה הבאה: {LEVELS[Math.min(lvl.n,LEVELS.length-1)].max - xp} XP</span>
+          </div>
+        </div>
+        <button className="wa-btn" onClick={onShare}>📱 שתף ב-WhatsApp</button>
+        <button className="retry-btn" onClick={onRetry}>🔄 שחק שוב</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── EMPTY BANK ────────────────────────────────────────
+function EmptyBank({mode,onReset,onBack}){
+  const modeLabel = mode==='easy'?'קל':mode==='medium'?'בינוני':mode==='hard'?'קשה':'כל הרמות';
+  return(
+    <div className="app">
+      <div className="score-card" style={{textAlign:'center'}}>
+        <span className="score-emoji">🏆</span>
+        <div className="score-big" style={{fontSize:22,marginBottom:8}}>בנק השאלות הושלם!</div>
+        <div className="score-sub" style={{marginBottom:20}}>ענית נכון על כל שאלות הרמה "{modeLabel}".<br/>אתה מדריך אמיתי! 🎉</div>
+        <div style={{color:'#aaa',fontSize:14,marginBottom:24}}>איפוס יחזיר את כל השאלות לרצייה מחדש.</div>
+        <button className="wa-btn" onClick={onReset} style={{background:'linear-gradient(135deg,#ff6b35,#ff4444)',marginBottom:12}}>🔄 איפוס שאלות</button>
+        <button className="retry-btn" onClick={onBack}>← חזרה</button>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<App/>, document.getElementById('root'));
+</script>
+</body>
+</html>
