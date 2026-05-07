@@ -516,7 +516,7 @@ function App(){
     clearInterval(timerRef.current);
     setPicked(-1);
     setStreak(0);
-    setTimeout(()=>advanceRef.current(),1600);
+    // no auto-advance — player clicks "next" button to continue
   };
   handleTimeoutRef.current = handleTimeout;
 
@@ -563,7 +563,7 @@ function App(){
       setXpFloat({v:'✗',ok:false});
       setTimeout(()=>setXpFloat(null),800);
     }
-    if(!levelUp) setTimeout(advance,1500);
+    // no auto-advance — player reads explanation and clicks "next"
   };
 
   const advance = ()=>{
