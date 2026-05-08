@@ -221,6 +221,9 @@
   .level-chip.hard-chip:hover,.level-chip.hard-chip.sel{background:rgba(255,68,68,0.25);}
   .level-chip.all-chip{border-color:#00a8ff;color:#00a8ff;background:rgba(0,168,255,0.08);}
   .level-chip.all-chip:hover,.level-chip.all-chip.sel{background:rgba(0,168,255,0.25);}
+  .level-chip.locked{opacity:0.4;cursor:not-allowed;position:relative;}
+  .level-chip.locked:hover{transform:none;box-shadow:none;background:rgba(255,255,255,0.03);}
+  .lock-info{font-size:10px;margin-top:2px;display:block;opacity:0.8;}
   .start-btn{
     width:100%;padding:16px;background:linear-gradient(135deg,#00ff88,#00a8ff);
     color:#070b1a;border:none;border-radius:10px;font-size:18px;font-weight:900;
@@ -758,6 +761,20 @@ function App(){
 // ─── INTRO ─────────────────────────────────────────────
 function Intro({mode,setMode,startGame,xp,bestStreak,playerName,onLeaderboard,onEditName}){
   const lvl = getLevel(xp);
+  const answered = JSON.parse(localStorage.getItem('gm_answered')||'[]');
+  const easyDone = answered.filter(id=>id.startsWith('e')).length;
+  const medDone = answered.filter(id=>id.startsWith('m')).length;
+  const UNLOCK_REQ = 20;
+  const medUnlocked = easyDone >= UNLOCK_REQ;
+  const hardUnlocked = medDone >= UNLOCK_REQ;
+
+  // Auto-fix mode if locked
+  useEffect(()=>{
+    if(mode==='medium' && !medUnlocked) setMode('easy');
+    if(mode==='hard' && !hardUnlocked) setMode(medUnlocked?'medium':'easy');
+    if(mode==='all' && !hardUnlocked) setMode(medUnlocked?'medium':'easy');
+  },[]);
+
   return(
     <div className="app">
       <div className="intro-card">
@@ -779,9 +796,16 @@ function Intro({mode,setMode,startGame,xp,bestStreak,playerName,onLeaderboard,on
 
         <div style={{fontSize:13,color:'#556',marginBottom:12,textAlign:'center'}}>בחר רמת קושי:</div>
         <div className="level-row">
-          {[['all','הכל 🎯','all-chip'],['easy','קל 🟢','easy-chip'],['medium','בינוני 🟡','med-chip'],['hard','קשה 🔴','hard-chip']].map(([v,l,c])=>(
-            <div key={v} className={`level-chip ${c} ${mode===v?'sel':''}`} onClick={()=>setMode(v)}>{l}</div>
-          ))}
+          <div className={`level-chip easy-chip ${mode==='easy'?'sel':''}`} onClick={()=>setMode('easy')}>קל 🟢</div>
+          <div className={`level-chip med-chip ${mode==='medium'?'sel':''} ${!medUnlocked?'locked':''}`} onClick={()=>{if(medUnlocked)setMode('medium');}}>
+            {medUnlocked?'בינוני 🟡':<>🔒 בינוני<span className="lock-info">{easyDone}/{UNLOCK_REQ} שאלות קלות</span></>}
+          </div>
+          <div className={`level-chip hard-chip ${mode==='hard'?'sel':''} ${!hardUnlocked?'locked':''}`} onClick={()=>{if(hardUnlocked)setMode('hard');}}>
+            {hardUnlocked?'קשה 🔴':<>🔒 קשה<span className="lock-info">{medUnlocked?`${medDone}/${UNLOCK_REQ} שאלות בינוניות`:'סיים בינוני קודם'}</span></>}
+          </div>
+          <div className={`level-chip all-chip ${mode==='all'?'sel':''} ${!hardUnlocked?'locked':''}`} onClick={()=>{if(hardUnlocked)setMode('all');}}>
+            {hardUnlocked?'הכל 🎯':<>🔒 הכל</>}
+          </div>
         </div>
 
         <button className="start-btn" onClick={startGame}>התחל אתגר! 🚀</button>
